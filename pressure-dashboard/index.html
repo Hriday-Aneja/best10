@@ -1,0 +1,595 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Pressure Index Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: navy masthead with pink rule (Royals palette), tabbed Batters/Bowlers views, big-numeral top-10 tiles, dumbbell + range charts, sortable full table. */
+:root{
+  --bg:#f5f4fa; --surface:#ffffff; --ink:#0d1233; --ink2:#4a5070; --muted:#6f7596; --line:#e0dfec;
+  --pink:#d6157c; --pink-soft:#fde6f2; --blue:#2d4fa8; --zone:#fbe9f3;
+  --hdr:#0b1236; --on-hdr:#ffffff; --on-hdr2:#b8bedf; --good:#1a7f4b; --bad:#c0262d;
+  --display:'Barlow Condensed','Arial Narrow',sans-serif; --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#080c22; --surface:#111838; --ink:#eef0fb; --ink2:#b5bad6; --muted:#8a90b3; --line:#232b55;
+  --pink:#f2459b; --pink-soft:#3a1530; --blue:#5f86ee; --zone:#2a1530;
+  --hdr:#050818; --on-hdr:#ffffff; --on-hdr2:#9aa1cc; --good:#4cd18a; --bad:#ff7b82; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#080c22; --surface:#111838; --ink:#eef0fb; --ink2:#b5bad6; --muted:#8a90b3; --line:#232b55;
+  --pink:#f2459b; --pink-soft:#3a1530; --blue:#5f86ee; --zone:#2a1530;
+  --hdr:#050818; --on-hdr:#ffffff; --on-hdr2:#9aa1cc; --good:#4cd18a; --bad:#ff7b82; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;margin:0}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.mast{background:var(--hdr);color:var(--on-hdr);border-bottom:4px solid var(--pink)}
+.mast .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.crest{width:38px;height:38px;border-radius:50%;background:var(--pink);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:.02em;color:#fff}
+.brand b{font-family:var(--display);font-size:22px;letter-spacing:.04em;text-transform:uppercase;display:block;line-height:1}
+.brand small{color:var(--on-hdr2);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.mast nav{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.mast nav a{color:var(--on-hdr2);text-decoration:none}
+.mast nav a:hover{color:var(--on-hdr)}
+.hero{padding-block:30px 6px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--pink);font-weight:700;margin:0 0 6px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,6vw,60px);line-height:.98;margin:0;text-transform:uppercase;letter-spacing:.01em;text-wrap:balance}
+.lede{color:var(--ink2);max-width:62ch;margin:12px 0 0}
+.tabs{display:flex;gap:8px;margin-top:22px;flex-wrap:wrap}
+.tab{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:8px 22px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--pink);border-color:var(--pink);color:#fff}
+.tab:focus-visible,.th-btn:focus-visible,.seg button:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+section{padding-block:26px 6px}
+h2{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:.03em;text-transform:uppercase;margin:0}
+.sub{color:var(--ink2);margin:4px 0 16px;max-width:70ch;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile .rk{font-family:var(--display);font-weight:800;font-size:52px;line-height:.9;color:var(--pink)}
+.tile .nm{font-weight:700;font-size:16px;line-height:1.2;text-wrap:balance}
+.tile .st{font-size:13px;color:var(--ink2)}
+.tile .st b{color:var(--ink);font-variant-numeric:tabular-nums}
+.meter{height:6px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--pink);border-radius:3px}
+.mlab{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.panelhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;font-weight:700;padding:6px 14px;border:0;background:transparent;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:8px 0 14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.dot.p{background:var(--pink)} .dot.u{background:var(--blue)}
+.dot.hol{background:var(--surface);border:2.5px solid var(--ink2)}
+.bar{width:22px;height:6px;border-radius:3px;background:var(--blue);opacity:.45;display:inline-block}
+.row{display:grid;grid-template-columns:150px minmax(0,1fr) 120px;align-items:center;gap:12px;padding-block:7px;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row .n{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .n em{font-style:normal;color:var(--muted);font-size:12px;margin-right:6px;font-variant-numeric:tabular-nums}
+.track{position:relative;height:22px}
+.track .axis{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
+.track .link{position:absolute;top:50%;height:4px;margin-top:-2px;background:var(--blue);opacity:.35;border-radius:2px}
+.track .pt{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--surface)}
+.track .pt.p{background:var(--pink);z-index:2} .track .pt.u{background:var(--blue);z-index:1}
+.vals{font-size:13px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vals b{color:var(--ink)}
+.zone{position:absolute;top:0;bottom:0;background:var(--zone);border-radius:3px}
+.rng{position:absolute;top:50%;height:6px;margin-top:-3px;background:var(--blue);opacity:.4;border-radius:3px}
+.track .pt.med{background:var(--surface);border:2.5px solid var(--ink2);z-index:1}
+.ticks{position:relative;height:18px;margin-left:162px;margin-right:132px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{position:absolute;transform:translateX(-50%)}
+.axisnote{font-size:12px;color:var(--muted);margin-top:4px}
+.tools{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+input[type=search]{font:inherit;font-size:14px;padding:8px 14px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--ink);min-width:0;width:min(100%,260px)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:nth-child(2),td:nth-child(2){text-align:left}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;background:var(--surface)}
+.th-btn{font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;font-weight:inherit;background:none;border:0;cursor:pointer;padding:0}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.top td{background:color-mix(in srgb,var(--pink-soft) 55%,transparent)}
+.pill{display:inline-block;min-width:30px;text-align:center;border-radius:999px;padding:1px 8px;font-weight:700;background:var(--line);color:var(--ink)}
+tr.top .pill{background:var(--pink);color:#fff}
+.up{color:var(--good)} .dn{color:var(--bad)} .fl{color:var(--muted)}
+footer{padding-block:30px 40px;color:var(--muted);font-size:13px}
+footer p{margin:0 0 6px;max-width:80ch}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){
+  .row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n v" "t t";row-gap:2px}
+  .row .n{grid-area:n}.row .vals{grid-area:v}.row .track{grid-area:t}
+  .ticks{margin-left:0;margin-right:0}
+  .tile .rk{font-size:42px}
+}
+@media (prefers-reduced-motion:no-preference){.meter i{transition:width .5s ease}}
+
+/* ===== v3: vertical scroll list of 3D player cards (photos load from ./players/) ===== */
+.tiles{display:flex;flex-direction:column;gap:78px;padding-top:62px}
+.tile{display:block;position:relative;perspective:1100px;background:none;border:0;padding:0;border-radius:0}
+.c3{position:relative;height:292px;border-radius:18px;color:#fff;border:1px solid rgba(255,255,255,.14);
+  background:radial-gradient(60% 120% at 20% 40%,rgba(214,21,124,.4),transparent 65%),linear-gradient(110deg,#1d2a73 0%,#0b1236 60%,#3d0d34 130%);
+  transform-style:preserve-3d;transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .2s ease-out,box-shadow .25s;
+  box-shadow:0 22px 34px -18px rgba(11,18,54,.65)}
+.tile.hot .c3{box-shadow:0 40px 60px -24px rgba(214,21,124,.6),0 0 0 2px var(--pink)}
+.tile.flip .c3{background:radial-gradient(60% 120% at 80% 40%,rgba(214,21,124,.4),transparent 65%),linear-gradient(250deg,#1d2a73 0%,#0b1236 60%,#3d0d34 130%)}
+.rkb{position:absolute;top:50%;left:15%;width:30%;text-align:center;font:800 280px/1 var(--display);color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.3);
+  transform:translateZ(18px) translateY(calc(-50% + var(--py,0px)));pointer-events:none;letter-spacing:-.02em}
+.tile.t1 .rkb{-webkit-text-stroke-color:var(--pink)}
+.ph{position:absolute;left:3%;width:34%;bottom:0;height:calc(100% + 58px);transform:translateZ(70px) translateY(calc(var(--py,0px)*-.35));pointer-events:none;display:flex;align-items:flex-end;justify-content:center}
+.ph img,.ph .fb{height:100%;max-width:100%;object-fit:contain;object-position:bottom;
+  filter:drop-shadow(2px 0 0 var(--pink)) drop-shadow(-2px 0 0 var(--pink)) drop-shadow(0 2px 0 var(--pink)) drop-shadow(0 -2px 0 var(--pink)) drop-shadow(0 18px 16px rgba(0,0,0,.5))}
+.fb{display:block;position:relative;aspect-ratio:100/120}
+.ph .fb{height:80%;width:auto}
+.fb svg{width:100%;height:100%;display:block}
+.fb b{position:absolute;left:0;right:0;top:47%;text-align:center;font:800 34px var(--display);color:#fff;letter-spacing:.04em}
+.inf{position:absolute;top:0;bottom:0;left:43%;right:3%;display:flex;flex-direction:column;justify-content:center;gap:6px;transform:translateZ(40px)}
+.tile.flip .ph{left:auto;right:3%}.tile.flip .rkb{left:auto;right:15%}.tile.flip .inf{left:3%;right:43%}
+.eb{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#ff8ac4;font-weight:700}
+.pn{font:800 clamp(30px,4.2vw,50px)/1 var(--display);text-transform:uppercase;letter-spacing:.01em}
+.big{display:flex;align-items:baseline;gap:10px;color:#c9cef0;font-size:13px}
+.big b{font:800 34px/1 var(--display);color:#fff;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:4px}
+.stats div{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 10px;min-width:0}
+.stats span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#aab0d8}
+.stats b{font:700 22px/1.15 var(--display);font-variant-numeric:tabular-nums}
+.stats em{display:block;font-style:normal;font-size:11.5px;color:#aab0d8}
+.inf .meter{background:rgba(255,255,255,.18);margin-top:4px}.inf .mlab{color:#aab0d8}
+.inf .meter i{background:linear-gradient(90deg,var(--pink),#ff8ac4);width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.gl{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none;transform:translateZ(1px);opacity:0;transition:opacity .2s;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,0%),rgba(255,255,255,.26),transparent 45%)}
+.tile.hot .gl{opacity:1}
+.av{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;margin-right:8px;vertical-align:middle;overflow:hidden;border:2px solid var(--pink);background:linear-gradient(160deg,#2d3f9a,#0b1236)}
+.av img{width:100%;height:100%;object-fit:cover;object-position:50% 12%}
+.av .fb{width:100%;height:100%;aspect-ratio:auto;display:grid;place-items:center}
+.av .fb svg{display:none}.av .fb b{position:static;font:800 11px var(--display);letter-spacing:.03em}
+.tp{display:inline-flex;align-items:center}
+@media (min-width:561px){.row{grid-template-columns:200px minmax(0,1fr) 120px}.ticks{margin-left:212px}}
+@media (max-width:699px){
+  .tiles{gap:64px}.c3{height:auto;padding:0 16px 18px}
+  .ph,.tile.flip .ph{position:relative;left:auto;right:auto;width:62%;height:250px;margin:-50px auto 0;bottom:auto}
+  .rkb,.tile.flip .rkb{left:0;right:auto;width:100%;top:0;font-size:170px;transform:translateZ(18px) translateY(var(--py,0px))}
+  .inf,.tile.flip .inf{position:relative;left:auto;right:auto;top:auto;bottom:auto;margin-top:6px}
+  .stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.stats b{font-size:19px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .tile{opacity:0;transform:perspective(900px) translateY(70px) rotateX(-14deg) scale(.96);transform-origin:50% 100%;transition:opacity .8s,transform .9s cubic-bezier(.2,.8,.2,1)}
+  .tile.in{opacity:1;transform:none}
+  .ph img,.ph .fb{animation:bob 5s ease-in-out infinite;animation-delay:calc(var(--i,0)*-.6s)}
+  @keyframes bob{50%{transform:translateY(-7px)}}
+}
+
+/* ===== v4: iconic knocks panel ===== */
+.tile[data-pl]{cursor:pointer}
+.tile[data-pl]:focus-visible{outline:3px solid var(--blue);outline-offset:6px;border-radius:18px}
+.tap{align-self:flex-start;margin-top:6px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:#ff8ac4;border:1px solid rgba(255,138,196,.5);border-radius:999px;padding:4px 12px;background:rgba(255,255,255,.05);transition:background .2s}
+.tile:hover .tap{background:rgba(214,21,124,.35)}
+#tbl tr[data-pl]{cursor:pointer}#tbl tr[data-pl]:hover td{background:var(--pink-soft)}
+.hlm{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity .2s}
+.hlm[hidden]{display:none}.hlm.on{opacity:1}
+.hl-bd{position:absolute;inset:0;background:rgba(5,8,24,.7);backdrop-filter:blur(3px)}
+.hl-pn{position:relative;width:min(620px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--surface);color:var(--ink);border-radius:18px;border-top:4px solid var(--pink);padding:22px 22px 18px;transform:translateY(24px) scale(.98);transition:transform .25s cubic-bezier(.2,.8,.2,1);box-shadow:0 30px 70px -20px rgba(0,0,0,.6)}
+.hlm.on .hl-pn{transform:none}
+.hl-x{position:absolute;top:10px;right:12px;width:36px;height:36px;border-radius:50%;border:0;background:var(--line);color:var(--ink);font-size:22px;line-height:1;cursor:pointer}
+.hl-x:focus-visible{outline:3px solid var(--blue)}
+.hl-hd{display:flex;gap:14px;align-items:center;padding-right:40px;margin-bottom:12px}
+.hl-ph{width:72px;height:72px;border-radius:50%;overflow:hidden;flex:none;border:3px solid var(--pink);background:linear-gradient(160deg,#2d3f9a,#0b1236);display:grid;place-items:center}
+.hl-ph img{width:100%;height:100%;object-fit:cover;object-position:50% 12%}
+.hl-ph .fb{height:100%;width:100%;aspect-ratio:auto;display:grid;place-items:center}.hl-ph .fb svg{display:none}.hl-ph .fb b{position:static;font:800 22px var(--display)}
+.hl-hd h3{font:800 clamp(26px,5vw,34px)/1 var(--display);text-transform:uppercase;margin:2px 0}
+.hl-hd .eb{color:var(--pink)}.hl-sb{font-size:13px;color:var(--ink2)}
+.hl-it{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.hl-n{text-align:center;background:var(--pink-soft);border-radius:12px;padding:8px 4px;align-self:start}
+.hl-n b{display:block;font:800 30px/1 var(--display);color:var(--pink);font-variant-numeric:tabular-nums;word-break:break-word}
+.hl-n span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+.hl-tg{font-weight:700;font-size:15px}
+.hl-tg i{font-style:normal;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;background:var(--pink);color:#fff;border-radius:999px;padding:2px 8px;margin-right:8px;vertical-align:2px}
+.hl-ev{font-size:12.5px;color:var(--muted);margin-top:2px}
+.hl-b p{margin:6px 0 0;font-size:14px;color:var(--ink2)}
+.hl-fn{font-size:11.5px;color:var(--muted);margin:10px 0 0;border-top:1px solid var(--line);padding-top:10px}
+.hl-em{color:var(--muted)}
+@media (max-width:560px){
+  .hlm{align-items:flex-end;padding:0}.hl-pn{border-radius:18px 18px 0 0;max-height:88dvh;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+  .hl-it{grid-template-columns:84px minmax(0,1fr);gap:10px}.hl-n b{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){.hlm,.hl-pn{transition:none}}
+
+/* ===== v5: reveal button, scroll cue, swipe sheet ===== */
+.inf .tap{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;margin-top:8px;padding:7px 16px 7px 8px;border:0;border-radius:999px;
+  background:linear-gradient(90deg,var(--pink),#ff6db4);color:#fff;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+  box-shadow:0 10px 22px -8px rgba(214,21,124,.8);position:relative;transition:transform .2s,box-shadow .2s}
+.tap .ic{position:relative;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.95);color:var(--pink);display:grid;place-items:center;flex:none}
+.tap .ic svg{width:16px;height:16px}
+.tap .ic::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid rgba(255,255,255,.8);opacity:0}
+.tap em{font-style:normal;background:rgba(0,0,0,.22);border-radius:999px;padding:1px 8px;margin-left:2px}
+.tap .hv{display:none}
+@media (hover:hover){.tap .tc{display:none}.tap .hv{display:inline}.tile:hover .tap{transform:translateY(-2px) scale(1.03);box-shadow:0 14px 28px -8px rgba(214,21,124,.95)}}
+@media (prefers-reduced-motion:no-preference){
+  .tap .ic::after{animation:ping 1.8s ease-out infinite}
+  @keyframes ping{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.7)}}
+  .tap .ic svg{animation:tapb 1.8s ease-in-out infinite}
+  @keyframes tapb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(2px) scale(.9)}}
+}
+.tile .tap{background:linear-gradient(90deg,var(--pink),#ff6db4)}
+.cue{display:flex;flex-direction:column;align-items:center;gap:2px;margin:26px auto 0;padding:8px 18px;background:none;border:0;color:var(--ink2);cursor:pointer;font:700 12px var(--body);letter-spacing:.16em;text-transform:uppercase;transition:opacity .4s}
+.cue.gone{opacity:0;pointer-events:none}
+.cue svg{width:22px;height:14px;color:var(--pink);display:block}
+.cue svg:nth-of-type(2){margin-top:-6px;opacity:.55}
+.cue:focus-visible{outline:3px solid var(--blue);border-radius:10px}
+@media (prefers-reduced-motion:no-preference){
+  .cue svg{animation:cue 1.6s ease-in-out infinite}.cue svg:nth-of-type(2){animation-delay:.2s}
+  @keyframes cue{0%,100%{transform:translateY(-3px);opacity:.25}50%{transform:translateY(5px);opacity:1}}
+  .hl-it{opacity:0;transform:translateY(14px);animation:hli .5s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--k,0)*90ms + 120ms)}
+  @keyframes hli{to{opacity:1;transform:none}}
+}
+.hl-grab{display:none;width:44px;height:5px;border-radius:3px;background:var(--line);margin:-10px auto 14px;touch-action:none}
+@media (max-width:560px){.hl-grab{display:block}.hl-pn{touch-action:pan-y}.hl-pn.drag{transition:none}}
+.hl-nx{display:flex;gap:8px;margin-top:6px}
+.hl-nx button{flex:1;font:700 12px var(--body);letter-spacing:.08em;text-transform:uppercase;padding:10px;border-radius:999px;border:2px solid var(--line);background:none;color:var(--ink2);cursor:pointer}
+.hl-nx button:hover{border-color:var(--pink);color:var(--pink)}.hl-nx button:focus-visible{outline:3px solid var(--blue)}
+.hl-nx button[disabled]{opacity:.35;pointer-events:none}
+
+/* ===== v6: no per-card button; one-time hint + small corner marker ===== */
+.pk{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;display:grid;place-items:center;pointer-events:none;transition:background .2s,transform .2s}
+.pk svg{width:14px;height:14px}
+.tile.flip .pk{left:auto;right:calc(43% + 4px)}
+.tile:hover .pk{background:var(--pink);transform:rotate(90deg)}
+@media (max-width:699px){.pk,.tile.flip .pk{top:12px;right:12px;left:auto}}
+.hint{display:inline-flex;align-items:center;gap:10px;margin:0 0 22px;padding:8px 16px 8px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink2);font-size:13px;transition:opacity .4s,transform .4s}
+.hint b{color:var(--pink);font-weight:700}
+.hint .hv{display:none}.hint.gone{opacity:0;transform:translateY(-6px);pointer-events:none;height:0;margin:0;padding:0;border:0;overflow:hidden}
+@media (hover:hover){.hint .tc{display:none}.hint .hv{display:inline}}
+.hf{position:relative;width:30px;height:30px;border-radius:50%;background:var(--pink);color:#fff;display:grid;place-items:center;flex:none}
+.hf svg{width:16px;height:16px}
+.hf::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--pink);opacity:0}
+@media (prefers-reduced-motion:no-preference){
+  .hf::after{animation:ping 1.8s ease-out infinite}
+  .hf svg{animation:tapb 1.8s ease-in-out infinite}
+}
+</style>
+
+<header class="mast">
+  <div class="wrap">
+    <a class="brand" href="https://www.rajasthanroyals.com/" target="_blank" rel="noopener">
+      <span class="crest" aria-hidden="true">RR</span>
+      <span><b>SupeRR Selector</b><small>Season 2 · Round 1</small></span>
+    </a>
+    <nav aria-label="Reference">
+      <a href="https://www.rajasthanroyals.com/" target="_blank" rel="noopener">Rajasthan Royals</a>
+      <a href="#batters">Batters</a>
+      <a href="#bowlers">Bowlers</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <p class="eyebrow">Most reliable under pressure</p>
+    <h1>Pressure Index</h1>
+    <p class="lede" id="lede"></p>
+    <div class="tabs" role="tablist" aria-label="Role">
+      <button class="tab" role="tab" id="tab-batters" data-view="batters">Batters</button>
+      <button class="tab" role="tab" id="tab-bowlers" data-view="bowlers">Bowlers</button>
+    </div>
+  </div>
+
+  <button type="button" class="cue" id="cue" aria-label="Scroll down to the Top 10"><span>Swipe down</span><svg viewBox="0 0 22 14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l9 9 9-9"/></svg><svg viewBox="0 0 22 14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l9 9 9-9"/></svg></button>
+
+  <section aria-labelledby="h-top">
+    <h2 id="h-top">Top 10</h2>
+    <p class="sub" id="sub-top"></p><div class="hint" id="hint" role="note"><span class="hf"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 013 0V10l5.2 1.3A2.5 2.5 0 0119 13.7V17a5 5 0 01-5 5h-1.6a5 5 0 01-3.9-1.9L5 16.4a1.6 1.6 0 012.4-2L9 15.9z"/></svg></span><span><b class="tc">Tap</b><b class="hv">Click</b> any card to reveal their iconic knocks and spells</span></div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section aria-labelledby="h-db">
+    <div class="panel">
+      <div class="panelhead">
+        <div>
+          <h2 id="h-db">Pressure vs usual</h2>
+          <p class="sub" id="sub-db" style="margin-bottom:0"></p>
+        </div>
+        <div class="seg" id="seg" role="group" aria-label="Metric"></div>
+      </div>
+      <div class="legend"><span><i class="dot p"></i>Under pressure</span><span><i class="dot u"></i>Usual</span><span id="better"></span></div>
+      <div id="db"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-rg">
+    <div class="panel">
+      <h2 id="h-rg">How certain is each rank</h2>
+      <p class="sub">Match-level bootstrap. The bar spans the 5th to 95th percentile rank; shaded band marks places 1 to 10.</p>
+      <div class="legend"><span><i class="dot p"></i>Final rank</span><span><i class="dot hol"></i>Bootstrap median</span><span><i class="bar"></i>5th–95th percentile</span></div>
+      <div id="rg"></div>
+      <div class="ticks" id="ticks" aria-hidden="true"></div>
+      <div class="axisnote" style="margin-left:212px">Rank among eligible players (1 = best)</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-all">
+    <h2 id="h-all">Full rankings</h2>
+    <p class="sub" id="sub-all"></p>
+    <div class="tools">
+      <label for="q" style="font-size:13px;color:var(--ink2)">Find a player</label>
+      <input id="q" type="search" placeholder="Search by name" autocomplete="off">
+    </div>
+    <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Pressure is defined as high leverage: the top 30% of deliveries by expected swing in win probability. Ratings combine usual level, pressure shift and consistency, with shrinkage for small samples.</p>
+    <p>Source: IPL and T20I ball-by-ball data, 2022 onwards, from the SupeRR Selector Round 1 data pack. Styling follows the Rajasthan Royals website palette. Player photos load from the players/ folder next to this file (transparent PNG cutouts named like suryakumar-yadav.png); silhouettes show where a photo is missing.</p>
+  </div>
+</footer>
+
+<script>
+const DATA = {"bat": [{"player": "Suryakumar Yadav", "rank": 1, "old": 1, "p05": 1.0, "p95": 8.0, "med": 2.0, "top10": 98, "top5": 86, "plx": 16.0, "clutch": 0.019, "hard": 7, "disadv": 34, "balls": 537, "pa": 161.3, "ua": 167.3, "pd": 3.54, "ud": 4.35}, {"player": "Tim David", "rank": 2, "old": 2, "p05": 1.0, "p95": 12.0, "med": 2.5, "top10": 94, "top5": 78, "plx": 12.5, "clutch": 0.037, "hard": 3, "disadv": 22, "balls": 340, "pa": 175.0, "ua": 177.8, "pd": 5.0, "ud": 4.97}, {"player": "Abhishek Sharma", "rank": 3, "old": 3, "p05": 1.0, "p95": 18.0, "med": 3.0, "top10": 87, "top5": 68, "plx": 13.1, "clutch": 0.034, "hard": 6, "disadv": 17, "balls": 168, "pa": 162.5, "ua": 187.9, "pd": 7.74, "ud": 5.21}, {"player": "Heinrich Klaasen", "rank": 4, "old": 4, "p05": 2.0, "p95": 17.0, "med": 6.0, "top10": 77, "top5": 41, "plx": 11.9, "clutch": 0.009, "hard": 4, "disadv": 28, "balls": 312, "pa": 163.8, "ua": 167.9, "pd": 4.49, "ud": 3.92}, {"player": "Nicholas Pooran", "rank": 5, "old": 5, "p05": 2.0, "p95": 27.0, "med": 7.0, "top10": 63, "top5": 39, "plx": 9.3, "clutch": 0.023, "hard": 7, "disadv": 35, "balls": 536, "pa": 156.2, "ua": 158.0, "pd": 5.22, "ud": 4.48}, {"player": "Virat Kohli", "rank": 6, "old": 9, "p05": 4.0, "p95": 30.0, "med": 11.0, "top10": 46, "top5": 14, "plx": 6.7, "clutch": 0.035, "hard": 3, "disadv": 10, "balls": 278, "pa": 150.0, "ua": 145.0, "pd": 3.96, "ud": 2.87}, {"player": "Jos Buttler", "rank": 7, "old": 6, "p05": 2.0, "p95": 37.0, "med": 11.0, "top10": 46, "top5": 21, "plx": 8.6, "clutch": 0.022, "hard": 3, "disadv": 17, "balls": 285, "pa": 164.2, "ua": 155.1, "pd": 3.86, "ud": 3.75}, {"player": "Shubman Gill", "rank": 8, "old": 14, "p05": 3.0, "p95": 44.0, "med": 14.5, "top10": 36, "top5": 15, "plx": 6.4, "clutch": 0.045, "hard": 8, "disadv": 15, "balls": 238, "pa": 177.7, "ua": 146.9, "pd": 2.1, "ud": 3.74}, {"player": "Rajat Patidar", "rank": 9, "old": 7, "p05": 4.0, "p95": 35.0, "med": 15.0, "top10": 30, "top5": 8, "plx": 8.9, "clutch": 0.003, "hard": 1, "disadv": 10, "balls": 194, "pa": 186.6, "ua": 162.2, "pd": 5.16, "ud": 4.59}, {"player": "Tilak Varma", "rank": 10, "old": 17, "p05": 4.0, "p95": 39.0, "med": 17.0, "top10": 30, "top5": 10, "plx": 5.8, "clutch": 0.036, "hard": 5, "disadv": 38, "balls": 672, "pa": 153.0, "ua": 140.4, "pd": 2.98, "ud": 3.45}, {"player": "Andre Russell", "rank": 11, "old": 8, "p05": 3.0, "p95": 40.0, "med": 15.0, "top10": 31, "top5": 11, "plx": 8.9, "clutch": 0.003, "hard": 2, "disadv": 20, "balls": 320, "pa": 168.1, "ua": 173.4, "pd": 4.06, "ud": 7.52}, {"player": "Glenn Maxwell", "rank": 12, "old": 25, "p05": 2.0, "p95": 52.05000000000001, "med": 16.0, "top10": 37, "top5": 21, "plx": 2.8, "clutch": 0.053, "hard": 2, "disadv": 10, "balls": 251, "pa": 168.1, "ua": 157.8, "pd": 7.97, "ud": 5.79}, {"player": "Shreyas Iyer", "rank": 13, "old": 10, "p05": 4.0, "p95": 46.0, "med": 16.0, "top10": 32, "top5": 13, "plx": 6.3, "clutch": 0.026, "hard": 3, "disadv": 15, "balls": 415, "pa": 164.6, "ua": 151.5, "pd": 3.85, "ud": 4.18}, {"player": "Rashid Khan", "rank": 14, "old": 33, "p05": 3.0, "p95": 54.0, "med": 17.0, "top10": 30, "top5": 14, "plx": 2.8, "clutch": 0.087, "hard": 3, "disadv": 23, "balls": 157, "pa": 153.5, "ua": 153.5, "pd": 8.28, "ud": 8.76}, {"player": "Lokesh Rahul", "rank": 15, "old": 12, "p05": 5.950000000000001, "p95": 41.0, "med": 18.0, "top10": 20, "top5": 5, "plx": 6.7, "clutch": 0.015, "hard": 5, "disadv": 20, "balls": 453, "pa": 150.1, "ua": 140.5, "pd": 4.64, "ud": 2.66}, {"player": "Glenn Phillips", "rank": 16, "old": 15, "p05": 6.0, "p95": 46.05000000000001, "med": 19.0, "top10": 21, "top5": 5, "plx": 6.7, "clutch": 0.017, "hard": 3, "disadv": 23, "balls": 191, "pa": 137.7, "ua": 152.4, "pd": 3.67, "ud": 4.53}, {"player": "Mitchell Marsh", "rank": 17, "old": 11, "p05": 6.0, "p95": 48.0, "med": 19.0, "top10": 20, "top5": 5, "plx": 6.8, "clutch": 0.008, "hard": 2, "disadv": 12, "balls": 259, "pa": 127.4, "ua": 160.4, "pd": 5.41, "ud": 4.1}, {"player": "David Miller", "rank": 18, "old": 32, "p05": 4.0, "p95": 54.05000000000001, "med": 22.0, "top10": 24, "top5": 11, "plx": 2.9, "clutch": 0.059, "hard": 8, "disadv": 28, "balls": 408, "pa": 143.1, "ua": 150.6, "pd": 4.17, "ud": 3.58}, {"player": "Rovman Powell", "rank": 19, "old": 16, "p05": 7.0, "p95": 47.05000000000001, "med": 21.0, "top10": 15, "top5": 2, "plx": 6.6, "clutch": 0.009, "hard": 5, "disadv": 44, "balls": 420, "pa": 157.9, "ua": 140.8, "pd": 4.76, "ud": 5.39}, {"player": "Sai Sudharsan", "rank": 20, "old": 13, "p05": 9.0, "p95": 38.05000000000001, "med": 20.5, "top10": 9, "top5": 0, "plx": 6.8, "clutch": 0.003, "hard": 1, "disadv": 13, "balls": 197, "pa": 159.9, "ua": 146.1, "pd": 3.55, "ud": 2.92}, {"player": "Rinku Singh", "rank": 21, "old": 28, "p05": 6.0, "p95": 50.0, "med": 22.0, "top10": 13, "top5": 4, "plx": 3.8, "clutch": 0.041, "hard": 5, "disadv": 25, "balls": 371, "pa": 138.0, "ua": 157.5, "pd": 5.12, "ud": 3.48}, {"player": "Riyan Parag", "rank": 22, "old": 23, "p05": 6.950000000000001, "p95": 48.10000000000002, "med": 23.0, "top10": 13, "top5": 3, "plx": 4.2, "clutch": 0.031, "hard": 6, "disadv": 19, "balls": 379, "pa": 161.2, "ua": 145.5, "pd": 3.69, "ud": 6.19}, {"player": "Sikandar Raza", "rank": 23, "old": 19, "p05": 8.0, "p95": 50.0, "med": 24.5, "top10": 11, "top5": 2, "plx": 5.3, "clutch": 0.009, "hard": 2, "disadv": 26, "balls": 250, "pa": 152.0, "ua": 130.4, "pd": 4.8, "ud": 4.97}, {"player": "Pathum Nissanka", "rank": 24, "old": 24, "p05": 7.0, "p95": 51.0, "med": 25.0, "top10": 12, "top5": 2, "plx": 4.0, "clutch": 0.019, "hard": 4, "disadv": 20, "balls": 152, "pa": 148.0, "ua": 134.7, "pd": 9.21, "ud": 3.76}, {"player": "Shivam Dube", "rank": 25, "old": 18, "p05": 9.0, "p95": 47.0, "med": 25.0, "top10": 9, "top5": 2, "plx": 5.4, "clutch": 0.001, "hard": 2, "disadv": 25, "balls": 372, "pa": 147.3, "ua": 156.4, "pd": 4.84, "ud": 4.46}, {"player": "Reeza Hendricks", "rank": 26, "old": 21, "p05": 9.0, "p95": 55.0, "med": 26.0, "top10": 10, "top5": 2, "plx": 5.1, "clutch": 0.012, "hard": 1, "disadv": 13, "balls": 153, "pa": 164.1, "ua": 143.5, "pd": 3.27, "ud": 4.17}, {"player": "Prabhsimran Singh", "rank": 27, "old": 27, "p05": 7.0, "p95": 56.10000000000002, "med": 28.0, "top10": 11, "top5": 2, "plx": 4.7, "clutch": 0.024, "hard": 2, "disadv": 10, "balls": 161, "pa": 201.2, "ua": 151.6, "pd": 6.21, "ud": 5.07}, {"player": "Romario Shepherd", "rank": 28, "old": 22, "p05": 10.950000000000001, "p95": 50.05000000000001, "med": 28.0, "top10": 5, "top5": 2, "plx": 5.4, "clutch": 0.009, "hard": 1, "disadv": 24, "balls": 241, "pa": 141.1, "ua": 163.5, "pd": 5.39, "ud": 6.16}, {"player": "Mohammad Rizwan", "rank": 29, "old": 20, "p05": 10.0, "p95": 50.05000000000001, "med": 28.0, "top10": 5, "top5": 1, "plx": 5.4, "clutch": 0.004, "hard": 3, "disadv": 12, "balls": 255, "pa": 143.5, "ua": 122.1, "pd": 2.35, "ud": 2.39}, {"player": "Cameron Green", "rank": 30, "old": 29, "p05": 10.0, "p95": 53.0, "med": 28.0, "top10": 7, "top5": 1, "plx": 4.3, "clutch": 0.019, "hard": 4, "disadv": 13, "balls": 249, "pa": 155.8, "ua": 152.6, "pd": 6.02, "ud": 3.2}, {"player": "Dinesh Karthik", "rank": 31, "old": 26, "p05": 8.950000000000001, "p95": 54.0, "med": 29.0, "top10": 9, "top5": 2, "plx": 4.2, "clutch": 0.011, "hard": 1, "disadv": 15, "balls": 286, "pa": 150.3, "ua": 179.8, "pd": 3.85, "ud": 6.63}, {"player": "Marcus Stoinis", "rank": 32, "old": 30, "p05": 7.950000000000001, "p95": 57.0, "med": 31.0, "top10": 10, "top5": 3, "plx": 4.4, "clutch": 0.023, "hard": 3, "disadv": 22, "balls": 305, "pa": 147.9, "ua": 154.5, "pd": 6.23, "ud": 4.76}, {"player": "Dasun Shanaka", "rank": 33, "old": 35, "p05": 7.0, "p95": 57.05000000000001, "med": 31.0, "top10": 7, "top5": 3, "plx": 2.3, "clutch": 0.032, "hard": 2, "disadv": 23, "balls": 297, "pa": 143.8, "ua": 136.4, "pd": 5.05, "ud": 6.53}, {"player": "Quinton de Kock", "rank": 34, "old": 39, "p05": 7.0, "p95": 65.05000000000001, "med": 32.0, "top10": 11, "top5": 3, "plx": 2.0, "clutch": 0.036, "hard": 4, "disadv": 15, "balls": 233, "pa": 167.0, "ua": 146.6, "pd": 4.29, "ud": 4.93}, {"player": "Hardik Pandya", "rank": 35, "old": 42, "p05": 10.0, "p95": 60.0, "med": 34.0, "top10": 6, "top5": 1, "plx": 0.4, "clutch": 0.038, "hard": 6, "disadv": 25, "balls": 553, "pa": 139.8, "ua": 141.3, "pd": 3.98, "ud": 4.55}, {"player": "Liam Livingstone", "rank": 36, "old": 31, "p05": 11.0, "p95": 59.0, "med": 34.0, "top10": 4, "top5": 0, "plx": 4.2, "clutch": 0.003, "hard": 2, "disadv": 23, "balls": 212, "pa": 167.9, "ua": 150.8, "pd": 7.08, "ud": 5.03}, {"player": "Daryl Mitchell", "rank": 37, "old": 34, "p05": 14.950000000000001, "p95": 55.0, "med": 34.0, "top10": 2, "top5": 0, "plx": 3.7, "clutch": 0.005, "hard": 3, "disadv": 27, "balls": 241, "pa": 133.2, "ua": 150.9, "pd": 5.39, "ud": 5.01}, {"player": "Tristan Stubbs", "rank": 38, "old": 36, "p05": 18.0, "p95": 58.0, "med": 37.0, "top10": 1, "top5": 0, "plx": 3.1, "clutch": 0.007, "hard": 2, "disadv": 26, "balls": 265, "pa": 139.2, "ua": 152.2, "pd": 5.66, "ud": 3.5}, {"player": "Shimron Hetmyer", "rank": 39, "old": 37, "p05": 16.0, "p95": 60.0, "med": 36.0, "top10": 1, "top5": 0, "plx": 2.3, "clutch": 0.011, "hard": 4, "disadv": 30, "balls": 369, "pa": 142.5, "ua": 153.9, "pd": 4.88, "ud": 6.26}, {"player": "Mohammad Nabi", "rank": 40, "old": 38, "p05": 18.950000000000003, "p95": 58.0, "med": 38.0, "top10": 1, "top5": 0, "plx": 2.1, "clutch": 0.005, "hard": 1, "disadv": 23, "balls": 167, "pa": 160.5, "ua": 122.2, "pd": 5.99, "ud": 5.66}, {"player": "Faf du Plessis", "rank": 41, "old": 41, "p05": 19.0, "p95": 60.0, "med": 40.0, "top10": 0, "top5": 0, "plx": 2.3, "clutch": 0.011, "hard": 3, "disadv": 10, "balls": 195, "pa": 149.2, "ua": 143.9, "pd": 4.1, "ud": 3.91}, {"player": "Aiden Markram", "rank": 42, "old": 40, "p05": 24.0, "p95": 62.05000000000001, "med": 42.0, "top10": 0, "top5": 0, "plx": 2.6, "clutch": 0.0, "hard": 0, "disadv": 32, "balls": 198, "pa": 150.5, "ua": 141.3, "pd": 6.06, "ud": 4.3}, {"player": "Jitesh Sharma", "rank": 43, "old": 43, "p05": 16.0, "p95": 63.0, "med": 44.0, "top10": 1, "top5": 0, "plx": 1.5, "clutch": 0.013, "hard": 3, "disadv": 18, "balls": 311, "pa": 136.7, "ua": 165.3, "pd": 6.11, "ud": 6.73}, {"player": "Fakhar Zaman", "rank": 44, "old": 45, "p05": 21.0, "p95": 62.0, "med": 43.0, "top10": 0, "top5": 0, "plx": 0.7, "clutch": 0.007, "hard": 2, "disadv": 12, "balls": 153, "pa": 154.9, "ua": 121.6, "pd": 6.54, "ud": 5.3}, {"player": "Sanju Samson", "rank": 45, "old": 44, "p05": 18.950000000000003, "p95": 65.0, "med": 45.0, "top10": 1, "top5": 0, "plx": 1.2, "clutch": 0.007, "hard": 2, "disadv": 10, "balls": 223, "pa": 138.1, "ua": 157.6, "pd": 8.52, "ud": 4.22}, {"player": "Ishan Kishan", "rank": 46, "old": 52, "p05": 15.950000000000001, "p95": 65.0, "med": 44.0, "top10": 2, "top5": 0, "plx": 0.4, "clutch": 0.019, "hard": 6, "disadv": 23, "balls": 361, "pa": 152.4, "ua": 144.1, "pd": 6.09, "ud": 4.24}, {"player": "Rahul Tewatia", "rank": 47, "old": 51, "p05": 22.0, "p95": 61.05000000000001, "med": 44.0, "top10": 0, "top5": 0, "plx": -0.3, "clutch": 0.009, "hard": 4, "disadv": 16, "balls": 233, "pa": 150.2, "ua": 148.4, "pd": 6.01, "ud": 6.01}, {"player": "Venkatesh Iyer", "rank": 48, "old": 46, "p05": 21.0, "p95": 65.0, "med": 45.0, "top10": 0, "top5": 0, "plx": 1.4, "clutch": 0.009, "hard": 2, "disadv": 10, "balls": 297, "pa": 155.9, "ua": 143.0, "pd": 4.38, "ud": 4.96}, {"player": "Nehal Wadhera", "rank": 49, "old": 47, "p05": 28.0, "p95": 63.0, "med": 47.0, "top10": 0, "top5": 0, "plx": 1.1, "clutch": 0.007, "hard": 3, "disadv": 14, "balls": 180, "pa": 131.1, "ua": 143.0, "pd": 3.33, "ud": 6.98}, {"player": "Nitish Rana", "rank": 50, "old": 50, "p05": 25.0, "p95": 64.0, "med": 48.0, "top10": 0, "top5": 0, "plx": 0.7, "clutch": 0.003, "hard": 3, "disadv": 18, "balls": 183, "pa": 159.6, "ua": 142.4, "pd": 7.65, "ud": 4.73}, {"player": "Washington Sundar", "rank": 51, "old": 54, "p05": 26.950000000000003, "p95": 62.05000000000001, "med": 47.0, "top10": 0, "top5": 0, "plx": -0.7, "clutch": 0.008, "hard": 1, "disadv": 15, "balls": 234, "pa": 134.6, "ua": 142.9, "pd": 4.7, "ud": 5.96}, {"player": "Nitish Reddy", "rank": 52, "old": 48, "p05": 22.0, "p95": 64.0, "med": 48.0, "top10": 0, "top5": 0, "plx": 1.1, "clutch": 0.008, "hard": 3, "disadv": 15, "balls": 172, "pa": 156.4, "ua": 148.4, "pd": 4.65, "ud": 5.2}, {"player": "Moeen Ali", "rank": 53, "old": 53, "p05": 24.0, "p95": 63.05000000000001, "med": 48.0, "top10": 0, "top5": 0, "plx": 0.3, "clutch": 0.005, "hard": 2, "disadv": 17, "balls": 229, "pa": 131.4, "ua": 146.8, "pd": 4.8, "ud": 6.46}, {"player": "Kamindu Mendis", "rank": 54, "old": 49, "p05": 33.95, "p95": 62.0, "med": 49.0, "top10": 0, "top5": 0, "plx": 1.2, "clutch": 0.0, "hard": 0, "disadv": 15, "balls": 216, "pa": 141.7, "ua": 123.5, "pd": 4.63, "ud": 5.73}, {"player": "Rohit Sharma", "rank": 55, "old": 61, "p05": 21.950000000000003, "p95": 67.0, "med": 53.0, "top10": 0, "top5": 0, "plx": -1.9, "clutch": 0.032, "hard": 4, "disadv": 19, "balls": 178, "pa": 141.0, "ua": 144.5, "pd": 4.49, "ud": 5.33}, {"player": "Dhruv Jurel", "rank": 56, "old": 55, "p05": 33.0, "p95": 65.05000000000001, "med": 52.0, "top10": 0, "top5": 0, "plx": 0.2, "clutch": 0.0, "hard": 0, "disadv": 10, "balls": 249, "pa": 158.2, "ua": 148.5, "pd": 6.43, "ud": 4.03}, {"player": "Iftikhar Ahmed", "rank": 57, "old": 56, "p05": 30.950000000000003, "p95": 65.0, "med": 55.0, "top10": 0, "top5": 0, "plx": -0.1, "clutch": 0.0, "hard": 0, "disadv": 11, "balls": 189, "pa": 122.8, "ua": 134.6, "pd": 6.35, "ud": 4.89}, {"player": "Rishabh Pant", "rank": 58, "old": 57, "p05": 33.95, "p95": 66.0, "med": 55.0, "top10": 0, "top5": 0, "plx": -0.4, "clutch": 0.001, "hard": 1, "disadv": 15, "balls": 239, "pa": 138.1, "ua": 142.3, "pd": 5.02, "ud": 4.58}, {"player": "Ayush Badoni", "rank": 59, "old": 59, "p05": 37.0, "p95": 66.0, "med": 55.0, "top10": 0, "top5": 0, "plx": -1.2, "clutch": 0.005, "hard": 2, "disadv": 17, "balls": 365, "pa": 146.6, "ua": 133.3, "pd": 5.21, "ud": 5.94}, {"player": "Sherfane Rutherford", "rank": 60, "old": 58, "p05": 34.0, "p95": 67.0, "med": 56.0, "top10": 0, "top5": 0, "plx": -0.5, "clutch": 0.005, "hard": 2, "disadv": 17, "balls": 243, "pa": 150.6, "ua": 145.7, "pd": 5.35, "ud": 5.62}, {"player": "Ravichandran Ashwin", "rank": 61, "old": 64, "p05": 34.0, "p95": 66.0, "med": 56.0, "top10": 0, "top5": 0, "plx": -2.7, "clutch": 0.028, "hard": 3, "disadv": 10, "balls": 150, "pa": 146.0, "ua": 118.6, "pd": 5.33, "ud": 9.58}, {"player": "Ravindra Jadeja", "rank": 62, "old": 60, "p05": 43.0, "p95": 65.0, "med": 58.0, "top10": 0, "top5": 0, "plx": -1.0, "clutch": 0.005, "hard": 1, "disadv": 21, "balls": 386, "pa": 135.0, "ua": 133.9, "pd": 3.37, "ud": 4.53}, {"player": "Deepak Hooda", "rank": 63, "old": 62, "p05": 34.95, "p95": 67.0, "med": 60.0, "top10": 0, "top5": 0, "plx": -2.0, "clutch": 0.005, "hard": 1, "disadv": 13, "balls": 247, "pa": 132.8, "ua": 131.6, "pd": 6.07, "ud": 6.05}, {"player": "Axar Patel", "rank": 64, "old": 63, "p05": 39.95, "p95": 67.0, "med": 60.0, "top10": 0, "top5": 0, "plx": -1.9, "clutch": 0.01, "hard": 7, "disadv": 38, "balls": 473, "pa": 139.5, "ua": 136.3, "pd": 5.07, "ud": 6.14}, {"player": "Sam Curran", "rank": 65, "old": 65, "p05": 41.0, "p95": 67.0, "med": 62.0, "top10": 0, "top5": 0, "plx": -2.0, "clutch": 0.002, "hard": 2, "disadv": 18, "balls": 247, "pa": 128.3, "ua": 129.9, "pd": 6.88, "ud": 5.2}, {"player": "Charith Asalanka", "rank": 66, "old": 66, "p05": 47.95, "p95": 67.0, "med": 62.0, "top10": 0, "top5": 0, "plx": -2.3, "clutch": 0.0, "hard": 0, "disadv": 10, "balls": 163, "pa": 109.2, "ua": 133.2, "pd": 10.43, "ud": 5.0}, {"player": "Krunal Pandya", "rank": 67, "old": 67, "p05": 50.95, "p95": 67.0, "med": 62.5, "top10": 0, "top5": 0, "plx": -3.2, "clutch": 0.0, "hard": 0, "disadv": 11, "balls": 218, "pa": 127.5, "ua": 127.0, "pd": 6.88, "ud": 4.06}], "bowl": [{"player": "Jasprit Bumrah", "rank": 1, "old": 1, "p05": 1.0, "p95": 11.0, "med": 2.0, "top10": 95, "top5": 81, "plx": 12.8, "clutch": 0.009, "hard": 4, "disadv": 30, "balls": 354, "pa": 7.46, "ua": 7.02, "pd": 0.305, "ud": 0.291}, {"player": "Sunil Narine", "rank": 2, "old": 2, "p05": 1.0, "p95": 11.0, "med": 3.0, "top10": 94, "top5": 78, "plx": 13.0, "clutch": 0.005, "hard": 2, "disadv": 27, "balls": 336, "pa": 7.61, "ua": 6.6, "pd": 0.375, "ud": 0.219}, {"player": "Josh Hazlewood", "rank": 3, "old": 4, "p05": 1.0, "p95": 30.0, "med": 7.0, "top10": 67, "top5": 44, "plx": 8.8, "clutch": 0.014, "hard": 6, "disadv": 21, "balls": 234, "pa": 9.9, "ua": 7.91, "pd": 0.333, "ud": 0.402}, {"player": "Kuldeep Yadav", "rank": 4, "old": 5, "p05": 1.0, "p95": 23.0, "med": 7.0, "top10": 67, "top5": 37, "plx": 8.6, "clutch": 0.018, "hard": 6, "disadv": 27, "balls": 398, "pa": 8.28, "ua": 7.93, "pd": 0.302, "ud": 0.379}, {"player": "Varun Chakravarthy", "rank": 5, "old": 3, "p05": 1.0, "p95": 26.100000000000023, "med": 7.0, "top10": 64, "top5": 37, "plx": 10.2, "clutch": 0.008, "hard": 3, "disadv": 29, "balls": 341, "pa": 9.22, "ua": 7.8, "pd": 0.334, "ud": 0.389}, {"player": "Rashid Khan", "rank": 6, "old": 6, "p05": 2.0, "p95": 28.05000000000001, "med": 8.0, "top10": 59, "top5": 33, "plx": 8.7, "clutch": 0.011, "hard": 7, "disadv": 41, "balls": 535, "pa": 7.99, "ua": 7.29, "pd": 0.28, "ud": 0.348}, {"player": "Wanindu Hasaranga", "rank": 7, "old": 8, "p05": 4.0, "p95": 31.05000000000001, "med": 13.0, "top10": 39, "top5": 14, "plx": 8.2, "clutch": 0.007, "hard": 5, "disadv": 36, "balls": 271, "pa": 7.99, "ua": 7.73, "pd": 0.354, "ud": 0.396}, {"player": "Matheesha Pathirana", "rank": 8, "old": 7, "p05": 4.0, "p95": 33.0, "med": 12.5, "top10": 40, "top5": 13, "plx": 8.5, "clutch": 0.001, "hard": 1, "disadv": 20, "balls": 221, "pa": 9.01, "ua": 8.45, "pd": 0.434, "ud": 0.424}, {"player": "Nathan Ellis", "rank": 9, "old": 11, "p05": 4.0, "p95": 42.0, "med": 18.0, "top10": 20, "top5": 8, "plx": 7.0, "clutch": 0.004, "hard": 3, "disadv": 14, "balls": 232, "pa": 8.28, "ua": 8.22, "pd": 0.491, "ud": 0.326}, {"player": "Noor Ahmad", "rank": 10, "old": 9, "p05": 5.0, "p95": 40.05000000000001, "med": 15.0, "top10": 29, "top5": 7, "plx": 7.2, "clutch": 0.007, "hard": 3, "disadv": 27, "balls": 244, "pa": 8.26, "ua": 8.02, "pd": 0.344, "ud": 0.347}, {"player": "Haris Rauf", "rank": 11, "old": 16, "p05": 3.0, "p95": 48.0, "med": 16.0, "top10": 32, "top5": 14, "plx": 5.5, "clutch": 0.025, "hard": 4, "disadv": 23, "balls": 241, "pa": 7.77, "ua": 8.95, "pd": 0.498, "ud": 0.422}, {"player": "Mustafizur Rahman", "rank": 12, "old": 17, "p05": 4.0, "p95": 44.05000000000001, "med": 16.0, "top10": 30, "top5": 13, "plx": 5.4, "clutch": 0.022, "hard": 5, "disadv": 23, "balls": 313, "pa": 9.85, "ua": 7.34, "pd": 0.268, "ud": 0.309}, {"player": "Krunal Pandya", "rank": 13, "old": 15, "p05": 3.0, "p95": 44.0, "med": 18.0, "top10": 28, "top5": 13, "plx": 5.6, "clutch": 0.024, "hard": 7, "disadv": 19, "balls": 259, "pa": 7.23, "ua": 7.9, "pd": 0.301, "ud": 0.26}, {"player": "Bhuvneshwar Kumar", "rank": 14, "old": 10, "p05": 3.0, "p95": 45.0, "med": 17.0, "top10": 29, "top5": 14, "plx": 7.5, "clutch": 0.004, "hard": 6, "disadv": 34, "balls": 340, "pa": 10.2, "ua": 7.92, "pd": 0.406, "ud": 0.297}, {"player": "Mitchell Santner", "rank": 15, "old": 12, "p05": 5.0, "p95": 41.0, "med": 19.0, "top10": 22, "top5": 5, "plx": 7.3, "clutch": 0.004, "hard": 3, "disadv": 28, "balls": 300, "pa": 8.66, "ua": 7.24, "pd": 0.22, "ud": 0.323}, {"player": "Axar Patel", "rank": 16, "old": 13, "p05": 6.0, "p95": 42.0, "med": 18.0, "top10": 22, "top5": 5, "plx": 5.6, "clutch": 0.006, "hard": 6, "disadv": 34, "balls": 495, "pa": 8.11, "ua": 7.84, "pd": 0.279, "ud": 0.265}, {"player": "Akeal Hosein", "rank": 17, "old": 18, "p05": 5.0, "p95": 51.05000000000001, "med": 20.0, "top10": 20, "top5": 6, "plx": 4.3, "clutch": 0.019, "hard": 7, "disadv": 37, "balls": 272, "pa": 7.65, "ua": 7.82, "pd": 0.309, "ud": 0.266}, {"player": "Obed McCoy", "rank": 18, "old": 40, "p05": 2.0, "p95": 66.05000000000001, "med": 23.0, "top10": 27, "top5": 14, "plx": 0.7, "clutch": 0.052, "hard": 3, "disadv": 13, "balls": 143, "pa": 9.69, "ua": 9.33, "pd": 0.462, "ud": 0.368}, {"player": "Ravi Bishnoi", "rank": 19, "old": 27, "p05": 4.0, "p95": 49.0, "med": 21.0, "top10": 19, "top5": 7, "plx": 3.7, "clutch": 0.024, "hard": 10, "disadv": 31, "balls": 467, "pa": 8.87, "ua": 8.16, "pd": 0.36, "ud": 0.3}, {"player": "Harpreet Brar", "rank": 20, "old": 26, "p05": 5.0, "p95": 51.05000000000001, "med": 23.0, "top10": 17, "top5": 6, "plx": 3.1, "clutch": 0.021, "hard": 5, "disadv": 17, "balls": 156, "pa": 9.42, "ua": 7.72, "pd": 0.269, "ud": 0.277}, {"player": "Mujeeb Ur Rahman", "rank": 21, "old": 14, "p05": 6.0, "p95": 43.0, "med": 22.5, "top10": 14, "top5": 3, "plx": 5.3, "clutch": 0.0, "hard": 0, "disadv": 14, "balls": 158, "pa": 6.04, "ua": 7.17, "pd": 0.342, "ud": 0.36}, {"player": "Maheesh Theekshana", "rank": 22, "old": 19, "p05": 10.950000000000001, "p95": 43.05000000000001, "med": 25.0, "top10": 5, "top5": 0, "plx": 4.4, "clutch": 0.007, "hard": 4, "disadv": 40, "balls": 289, "pa": 8.2, "ua": 7.56, "pd": 0.291, "ud": 0.247}, {"player": "Shaheen Afridi", "rank": 23, "old": 21, "p05": 7.0, "p95": 50.0, "med": 27.0, "top10": 14, "top5": 3, "plx": 4.2, "clutch": 0.008, "hard": 2, "disadv": 21, "balls": 183, "pa": 9.51, "ua": 7.56, "pd": 0.426, "ud": 0.403}, {"player": "Prasidh Krishna", "rank": 24, "old": 25, "p05": 5.950000000000001, "p95": 60.0, "med": 27.0, "top10": 14, "top5": 5, "plx": 3.1, "clutch": 0.009, "hard": 5, "disadv": 19, "balls": 315, "pa": 10.99, "ua": 8.34, "pd": 0.438, "ud": 0.324}, {"player": "Lungi Ngidi", "rank": 25, "old": 24, "p05": 9.950000000000001, "p95": 51.0, "med": 27.0, "top10": 7, "top5": 1, "plx": 3.4, "clutch": 0.005, "hard": 1, "disadv": 20, "balls": 226, "pa": 8.23, "ua": 9.22, "pd": 0.319, "ud": 0.348}, {"player": "Yuzvendra Chahal", "rank": 26, "old": 28, "p05": 7.0, "p95": 55.05000000000001, "med": 28.0, "top10": 11, "top5": 3, "plx": 3.3, "clutch": 0.015, "hard": 6, "disadv": 31, "balls": 501, "pa": 9.5, "ua": 8.44, "pd": 0.347, "ud": 0.355}, {"player": "Jofra Archer", "rank": 27, "old": 20, "p05": 8.950000000000001, "p95": 50.05000000000001, "med": 27.5, "top10": 10, "top5": 2, "plx": 4.4, "clutch": 0.002, "hard": 5, "disadv": 27, "balls": 291, "pa": 9.63, "ua": 8.73, "pd": 0.392, "ud": 0.326}, {"player": "Kagiso Rabada", "rank": 28, "old": 23, "p05": 9.0, "p95": 51.0, "med": 30.0, "top10": 7, "top5": 1, "plx": 4.4, "clutch": 0.005, "hard": 5, "disadv": 31, "balls": 320, "pa": 9.21, "ua": 9.26, "pd": 0.413, "ud": 0.315}, {"player": "Arshdeep Singh", "rank": 29, "old": 22, "p05": 10.0, "p95": 54.0, "med": 29.5, "top10": 6, "top5": 1, "plx": 4.1, "clutch": 0.002, "hard": 5, "disadv": 45, "balls": 593, "pa": 10.44, "ua": 8.76, "pd": 0.395, "ud": 0.346}, {"player": "Ravichandran Ashwin", "rank": 30, "old": 31, "p05": 15.950000000000001, "p95": 55.0, "med": 32.0, "top10": 2, "top5": 0, "plx": 3.0, "clutch": 0.008, "hard": 4, "disadv": 23, "balls": 321, "pa": 8.07, "ua": 7.72, "pd": 0.243, "ud": 0.188}, {"player": "Mohammed Shami", "rank": 31, "old": 36, "p05": 7.950000000000001, "p95": 62.05000000000001, "med": 32.0, "top10": 9, "top5": 2, "plx": 1.7, "clutch": 0.02, "hard": 4, "disadv": 20, "balls": 222, "pa": 8.65, "ua": 8.59, "pd": 0.324, "ud": 0.332}, {"player": "Harshal Patel", "rank": 32, "old": 29, "p05": 13.0, "p95": 58.0, "med": 32.5, "top10": 3, "top5": 1, "plx": 2.7, "clutch": 0.002, "hard": 4, "disadv": 33, "balls": 332, "pa": 9.9, "ua": 9.03, "pd": 0.452, "ud": 0.33}, {"player": "Jason Holder", "rank": 33, "old": 33, "p05": 12.950000000000001, "p95": 55.0, "med": 33.0, "top10": 2, "top5": 1, "plx": 2.3, "clutch": 0.014, "hard": 6, "disadv": 41, "balls": 388, "pa": 9.59, "ua": 8.86, "pd": 0.371, "ud": 0.324}, {"player": "Naveen ul Haq", "rank": 34, "old": 32, "p05": 10.950000000000001, "p95": 62.05000000000001, "med": 35.0, "top10": 5, "top5": 2, "plx": 3.1, "clutch": 0.012, "hard": 3, "disadv": 15, "balls": 169, "pa": 9.3, "ua": 8.69, "pd": 0.568, "ud": 0.341}, {"player": "Lockie Ferguson", "rank": 35, "old": 30, "p05": 9.0, "p95": 63.0, "med": 34.0, "top10": 6, "top5": 1, "plx": 4.0, "clutch": 0.009, "hard": 2, "disadv": 19, "balls": 231, "pa": 10.1, "ua": 8.6, "pd": 0.234, "ud": 0.368}, {"player": "Sikandar Raza", "rank": 36, "old": 35, "p05": 17.0, "p95": 56.05000000000001, "med": 37.0, "top10": 1, "top5": 0, "plx": 2.3, "clutch": 0.006, "hard": 2, "disadv": 27, "balls": 144, "pa": 7.67, "ua": 6.96, "pd": 0.417, "ud": 0.209}, {"player": "Mohammed Siraj", "rank": 37, "old": 38, "p05": 13.950000000000001, "p95": 64.05000000000001, "med": 39.0, "top10": 2, "top5": 0, "plx": 1.9, "clutch": 0.005, "hard": 4, "disadv": 28, "balls": 308, "pa": 10.32, "ua": 8.48, "pd": 0.37, "ud": 0.258}, {"player": "Marco Jansen", "rank": 38, "old": 53, "p05": 7.0, "p95": 70.0, "med": 40.0, "top10": 10, "top5": 3, "plx": -1.5, "clutch": 0.035, "hard": 5, "disadv": 23, "balls": 225, "pa": 10.72, "ua": 9.38, "pd": 0.24, "ud": 0.254}, {"player": "Ravindra Jadeja", "rank": 39, "old": 37, "p05": 18.950000000000003, "p95": 62.0, "med": 41.0, "top10": 1, "top5": 0, "plx": 2.3, "clutch": 0.004, "hard": 2, "disadv": 24, "balls": 282, "pa": 8.85, "ua": 7.71, "pd": 0.128, "ud": 0.285}, {"player": "Trent Boult", "rank": 40, "old": 39, "p05": 18.0, "p95": 65.0, "med": 39.0, "top10": 2, "top5": 0, "plx": 1.6, "clutch": 0.005, "hard": 3, "disadv": 24, "balls": 302, "pa": 9.12, "ua": 8.16, "pd": 0.358, "ud": 0.265}, {"player": "Sandeep Sharma", "rank": 41, "old": 51, "p05": 15.0, "p95": 67.10000000000002, "med": 41.5, "top10": 2, "top5": 1, "plx": -1.2, "clutch": 0.027, "hard": 4, "disadv": 15, "balls": 262, "pa": 10.97, "ua": 8.27, "pd": 0.275, "ud": 0.22}, {"player": "Rahul Chahar", "rank": 42, "old": 41, "p05": 17.950000000000003, "p95": 65.0, "med": 42.0, "top10": 0, "top5": 0, "plx": 2.2, "clutch": 0.008, "hard": 2, "disadv": 17, "balls": 234, "pa": 8.36, "ua": 8.0, "pd": 0.205, "ud": 0.257}, {"player": "Patrick Cummins", "rank": 43, "old": 42, "p05": 17.950000000000003, "p95": 64.0, "med": 43.0, "top10": 1, "top5": 0, "plx": 1.6, "clutch": 0.009, "hard": 4, "disadv": 26, "balls": 265, "pa": 9.64, "ua": 9.19, "pd": 0.249, "ud": 0.303}, {"player": "Vaibhav Arora", "rank": 44, "old": 52, "p05": 15.950000000000001, "p95": 68.0, "med": 45.0, "top10": 2, "top5": 0, "plx": -1.5, "clutch": 0.024, "hard": 2, "disadv": 15, "balls": 203, "pa": 9.96, "ua": 9.74, "pd": 0.296, "ud": 0.335}, {"player": "Harshit Rana", "rank": 45, "old": 43, "p05": 15.0, "p95": 67.05000000000001, "med": 43.5, "top10": 2, "top5": 0, "plx": 0.7, "clutch": 0.009, "hard": 1, "disadv": 14, "balls": 164, "pa": 10.57, "ua": 9.25, "pd": 0.402, "ud": 0.366}, {"player": "Taskin Ahmed", "rank": 46, "old": 45, "p05": 19.0, "p95": 66.0, "med": 43.0, "top10": 1, "top5": 0, "plx": -0.2, "clutch": 0.009, "hard": 3, "disadv": 14, "balls": 143, "pa": 8.43, "ua": 8.03, "pd": 0.336, "ud": 0.324}, {"player": "FazalHaq Farooqi", "rank": 47, "old": 48, "p05": 18.950000000000003, "p95": 69.0, "med": 45.0, "top10": 1, "top5": 0, "plx": -0.5, "clutch": 0.013, "hard": 4, "disadv": 25, "balls": 212, "pa": 10.1, "ua": 7.74, "pd": 0.255, "ud": 0.268}, {"player": "Prince Yadav", "rank": 48, "old": 44, "p05": 26.0, "p95": 66.0, "med": 48.0, "top10": 0, "top5": 0, "plx": 0.4, "clutch": 0.0, "hard": 0, "disadv": 15, "balls": 212, "pa": 9.76, "ua": 8.94, "pd": 0.142, "ud": 0.292}, {"player": "Digvesh Rathi", "rank": 49, "old": 47, "p05": 27.0, "p95": 65.0, "med": 48.0, "top10": 0, "top5": 0, "plx": -0.2, "clutch": 0.005, "hard": 2, "disadv": 13, "balls": 149, "pa": 8.86, "ua": 8.88, "pd": 0.322, "ud": 0.177}, {"player": "Avesh Khan", "rank": 50, "old": 59, "p05": 21.85, "p95": 72.0, "med": 49.0, "top10": 0, "top5": 0, "plx": -2.4, "clutch": 0.02, "hard": 7, "disadv": 31, "balls": 392, "pa": 10.18, "ua": 9.32, "pd": 0.306, "ud": 0.309}, {"player": "T Natarajan", "rank": 51, "old": 46, "p05": 27.0, "p95": 71.0, "med": 49.0, "top10": 0, "top5": 0, "plx": 0.6, "clutch": 0.005, "hard": 4, "disadv": 21, "balls": 316, "pa": 10.88, "ua": 9.12, "pd": 0.304, "ud": 0.296}, {"player": "Dushmantha Chameera", "rank": 52, "old": 54, "p05": 17.0, "p95": 72.0, "med": 51.0, "top10": 3, "top5": 0, "plx": -0.7, "clutch": 0.014, "hard": 3, "disadv": 23, "balls": 187, "pa": 9.34, "ua": 8.68, "pd": 0.353, "ud": 0.292}, {"player": "Mohit Sharma", "rank": 53, "old": 56, "p05": 22.0, "p95": 72.0, "med": 50.0, "top10": 1, "top5": 0, "plx": -0.8, "clutch": 0.017, "hard": 4, "disadv": 11, "balls": 155, "pa": 13.24, "ua": 8.38, "pd": 0.271, "ud": 0.403}, {"player": "Khaleel Ahmed", "rank": 54, "old": 50, "p05": 24.0, "p95": 71.0, "med": 52.5, "top10": 0, "top5": 0, "plx": -0.0, "clutch": 0.002, "hard": 2, "disadv": 25, "balls": 253, "pa": 9.79, "ua": 8.72, "pd": 0.403, "ud": 0.286}, {"player": "Richard Ngarava", "rank": 55, "old": 49, "p05": 28.950000000000003, "p95": 65.0, "med": 51.5, "top10": 0, "top5": 0, "plx": 0.0, "clutch": 0.002, "hard": 1, "disadv": 25, "balls": 164, "pa": 7.65, "ua": 8.1, "pd": 0.439, "ud": 0.255}, {"player": "Tushar Deshpande", "rank": 56, "old": 55, "p05": 32.0, "p95": 71.0, "med": 55.0, "top10": 0, "top5": 0, "plx": -0.9, "clutch": 0.003, "hard": 1, "disadv": 19, "balls": 222, "pa": 11.27, "ua": 9.45, "pd": 0.459, "ud": 0.279}, {"player": "Matt Henry", "rank": 57, "old": 68, "p05": 29.0, "p95": 72.05000000000001, "med": 57.0, "top10": 0, "top5": 0, "plx": -4.8, "clutch": 0.027, "hard": 2, "disadv": 11, "balls": 146, "pa": 9.33, "ua": 9.42, "pd": 0.37, "ud": 0.229}, {"player": "Kartik Tyagi", "rank": 58, "old": 58, "p05": 37.0, "p95": 69.05000000000001, "med": 57.0, "top10": 0, "top5": 0, "plx": -0.8, "clutch": 0.004, "hard": 1, "disadv": 9, "balls": 147, "pa": 8.78, "ua": 11.31, "pd": 0.286, "ud": 0.291}, {"player": "Suyash Sharma", "rank": 59, "old": 60, "p05": 37.0, "p95": 71.05000000000001, "med": 58.0, "top10": 0, "top5": 0, "plx": -1.5, "clutch": 0.005, "hard": 3, "disadv": 13, "balls": 174, "pa": 8.83, "ua": 8.86, "pd": 0.241, "ud": 0.2}, {"player": "Yash Dayal", "rank": 60, "old": 57, "p05": 41.0, "p95": 70.0, "med": 58.0, "top10": 0, "top5": 0, "plx": -0.8, "clutch": 0.001, "hard": 1, "disadv": 14, "balls": 184, "pa": 10.34, "ua": 9.32, "pd": 0.196, "ud": 0.312}, {"player": "Liam Livingstone", "rank": 61, "old": 61, "p05": 34.0, "p95": 72.05000000000001, "med": 58.0, "top10": 0, "top5": 0, "plx": -1.7, "clutch": 0.005, "hard": 1, "disadv": 15, "balls": 148, "pa": 9.69, "ua": 9.48, "pd": 0.243, "ud": 0.35}, {"player": "Mukesh Kumar", "rank": 62, "old": 64, "p05": 34.0, "p95": 74.0, "med": 59.0, "top10": 0, "top5": 0, "plx": -3.4, "clutch": 0.004, "hard": 4, "disadv": 20, "balls": 243, "pa": 10.62, "ua": 9.99, "pd": 0.321, "ud": 0.318}, {"player": "Adam Zampa", "rank": 63, "old": 62, "p05": 29.0, "p95": 73.0, "med": 59.0, "top10": 0, "top5": 0, "plx": -1.2, "clutch": 0.008, "hard": 2, "disadv": 10, "balls": 202, "pa": 9.95, "ua": 8.1, "pd": 0.327, "ud": 0.347}, {"player": "Azmatullah Omarzai", "rank": 64, "old": 63, "p05": 32.95, "p95": 73.05000000000001, "med": 60.0, "top10": 0, "top5": 0, "plx": -2.0, "clutch": 0.005, "hard": 2, "disadv": 21, "balls": 192, "pa": 8.72, "ua": 8.72, "pd": 0.375, "ud": 0.289}, {"player": "Vyshak Kumar", "rank": 65, "old": 65, "p05": 42.0, "p95": 73.05000000000001, "med": 63.0, "top10": 0, "top5": 0, "plx": -2.7, "clutch": 0.0, "hard": 0, "disadv": 12, "balls": 194, "pa": 11.81, "ua": 9.6, "pd": 0.309, "ud": 0.295}, {"player": "Alzarri Joseph", "rank": 66, "old": 67, "p05": 42.95, "p95": 75.0, "med": 63.0, "top10": 0, "top5": 0, "plx": -3.0, "clutch": 0.004, "hard": 2, "disadv": 25, "balls": 254, "pa": 9.64, "ua": 9.65, "pd": 0.354, "ud": 0.284}, {"player": "Sam Curran", "rank": 67, "old": 69, "p05": 46.95, "p95": 75.0, "med": 67.0, "top10": 0, "top5": 0, "plx": -4.3, "clutch": 0.002, "hard": 3, "disadv": 30, "balls": 315, "pa": 9.85, "ua": 9.42, "pd": 0.343, "ud": 0.239}, {"player": "Andre Russell", "rank": 68, "old": 66, "p05": 42.0, "p95": 76.0, "med": 67.0, "top10": 0, "top5": 0, "plx": -2.3, "clutch": 0.001, "hard": 1, "disadv": 23, "balls": 159, "pa": 12.38, "ua": 10.51, "pd": 0.566, "ud": 0.472}, {"player": "Cameron Green", "rank": 69, "old": 70, "p05": 52.95, "p95": 75.0, "med": 69.0, "top10": 0, "top5": 0, "plx": -4.3, "clutch": 0.001, "hard": 2, "disadv": 16, "balls": 200, "pa": 11.28, "ua": 8.97, "pd": 0.3, "ud": 0.214}, {"player": "Shardul Thakur", "rank": 70, "old": 71, "p05": 43.95, "p95": 76.0, "med": 68.0, "top10": 0, "top5": 0, "plx": -4.1, "clutch": 0.007, "hard": 4, "disadv": 21, "balls": 216, "pa": 12.92, "ua": 9.54, "pd": 0.5, "ud": 0.285}, {"player": "Xavier Bartlett", "rank": 71, "old": 72, "p05": 53.95, "p95": 76.0, "med": 69.5, "top10": 0, "top5": 0, "plx": -4.7, "clutch": 0.005, "hard": 4, "disadv": 8, "balls": 153, "pa": 9.92, "ua": 9.57, "pd": 0.196, "ud": 0.246}, {"player": "Nitish Reddy", "rank": 72, "old": 73, "p05": 48.95, "p95": 76.0, "med": 69.5, "top10": 0, "top5": 0, "plx": -5.2, "clutch": 0.009, "hard": 2, "disadv": 12, "balls": 142, "pa": 11.96, "ua": 9.84, "pd": 0.254, "ud": 0.298}, {"player": "Romario Shepherd", "rank": 73, "old": 76, "p05": 53.95, "p95": 76.0, "med": 72.0, "top10": 0, "top5": 0, "plx": -7.2, "clutch": 0.012, "hard": 5, "disadv": 38, "balls": 285, "pa": 10.13, "ua": 10.51, "pd": 0.4, "ud": 0.3}, {"player": "Anrich Nortje", "rank": 74, "old": 74, "p05": 58.0, "p95": 76.0, "med": 72.0, "top10": 0, "top5": 0, "plx": -5.7, "clutch": 0.003, "hard": 2, "disadv": 22, "balls": 193, "pa": 11.66, "ua": 9.92, "pd": 0.249, "ud": 0.259}, {"player": "Hardik Pandya", "rank": 75, "old": 75, "p05": 57.0, "p95": 76.0, "med": 73.0, "top10": 0, "top5": 0, "plx": -5.8, "clutch": 0.0, "hard": 1, "disadv": 27, "balls": 312, "pa": 10.13, "ua": 8.7, "pd": 0.25, "ud": 0.285}]};
+const CFG = {
+  batters:{key:'bat',n:DATA.bat.length,noun:'batters',
+    metrics:[
+      {label:'Strike rate',p:'pa',u:'ua',dec:1,better:'high',short:'SR'},
+      {label:'Dismissal %',p:'pd',u:'ud',dec:2,better:'low',short:'Dis %'}],
+    colP:'Pressure SR',colU:'Usual SR',colX:'Pressure dis %',
+    lede:'Who keeps scoring when the next ball can swing the match, ranked among 67 eligible batters.'},
+  bowlers:{key:'bowl',n:DATA.bowl.length,noun:'bowlers',
+    metrics:[
+      {label:'Economy',p:'pa',u:'ua',dec:2,better:'low',short:'Econ'},
+      {label:'Wickets per over',p:'pd',u:'ud',dec:3,better:'high',short:'Wkts/ov'}],
+    colP:'Pressure econ',colU:'Usual econ',colX:'Pressure wkts/over',
+    lede:'Who holds a line and takes wickets when the next ball can swing the match, ranked among 75 eligible bowlers.'}
+};
+const S={view:'batters',m:0,sort:'rank',dir:1,q:''};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const f=(v,d)=>Number(v).toFixed(d);
+const sg=(v,d)=>(v>0?'+':'')+Number(v).toFixed(d);
+const rows=()=>DATA[CFG[S.view].key];
+
+function hashView(){const h=location.hash.replace('#','');return h==='bowlers'?'bowlers':'batters';}
+function setView(v,push){S.view=v;S.m=0;S.sort='rank';S.dir=1;S.q='';$('q').value='';
+  if(push&&location.hash!=='#'+v)location.hash=v;render();}
+
+function render(){
+  const c=CFG[S.view],r=rows();
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.view===S.view));
+  $('lede').textContent=c.lede;
+  const top=r.slice(0,10);
+  $('sub-top').textContent=(S.view==='batters'?'Pressure rating (L+X) is runs added per 100 balls above the context average.':'Pressure rating (L+X) is runs saved per 100 balls above the context average.')+' The bar shows the share of resamples that keep the player in the top 10.';
+  $('tiles').innerHTML=top.map(card).join('');
+  renderDB(top);renderRG(top);renderTable();enhance();
+  $('sub-all').textContent='All '+c.n+' eligible '+c.noun+'. Click a column heading to sort.';
+}
+
+function renderDB(top){
+  const c=CFG[S.view],m=c.metrics[S.m];
+  $('seg').innerHTML=c.metrics.map((x,i)=>`<button type="button" data-m="${i}" aria-pressed="${i===S.m}">${x.label}</button>`).join('');
+  $('seg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.m=+b.dataset.m;renderDB(top);});
+  $('better').innerHTML='<span style="color:var(--muted)">'+(m.better==='high'?'Higher is better →':'← Lower is better')+'</span>';
+  $('sub-db').textContent=m.label+' on high-pressure balls compared with all other balls, top 10.';
+  const vals=top.flatMap(d=>[d[m.p],d[m.u]]);
+  let lo=Math.min(...vals),hi=Math.max(...vals),pad=(hi-lo)*.1||1;lo-=pad;hi+=pad;
+  const pos=v=>((v-lo)/(hi-lo)*100);
+  $('db').innerHTML=top.map(d=>{
+    const a=pos(d[m.p]),b=pos(d[m.u]),l=Math.min(a,b),w=Math.abs(a-b);
+    return `<div class="row"><div class="n"><em>${d.rank}</em>${av(d.player)}${esc(d.player)}</div>
+    <div class="track"><div class="axis"></div><div class="link" style="left:${l}%;width:${w}%"></div>
+    <div class="pt u" style="left:${b}%" title="Usual ${f(d[m.u],m.dec)}"></div>
+    <div class="pt p" style="left:${a}%" title="Pressure ${f(d[m.p],m.dec)}"></div></div>
+    <div class="vals"><b>${f(d[m.p],m.dec)}</b> / ${f(d[m.u],m.dec)}</div></div>`}).join('');
+}
+
+function renderRG(top){
+  const n=CFG[S.view].n,pos=r=>((r-1)/(n-1)*100);
+  const zw=pos(10.5);
+  $('rg').innerHTML=top.map(d=>`<div class="row"><div class="n"><em>${d.rank}</em>${av(d.player)}${esc(d.player)}</div>
+    <div class="track"><div class="zone" style="left:0;width:${zw}%"></div><div class="axis"></div>
+    <div class="rng" style="left:${pos(d.p05)}%;width:${Math.max(pos(d.p95)-pos(d.p05),.5)}%"></div>
+    <div class="pt med" style="left:${pos(d.med)}%" title="Bootstrap median ${d.med}"></div>
+    <div class="pt p" style="left:${pos(d.rank)}%" title="Final rank ${d.rank}"></div></div>
+    <div class="vals">${d.p05<1.5?1:Math.round(d.p05)}–${Math.round(d.p95)}</div></div>`).join('');
+  const t=[1,10,20,30,40,50,60,70].filter(x=>x<n-3).concat([n]);
+  $('ticks').innerHTML=t.map(x=>`<span style="left:${pos(x)}%">${x}</span>`).join('');
+}
+
+function cols(){
+  const c=CFG[S.view];
+  return [
+    {k:'rank',l:'Rank',v:d=>`<span class="pill">${d.rank}</span>`},
+    {k:'player',l:'Player',v:d=>`<span class="tp">${av(d.player)}${esc(d.player)}</span>`},
+    {k:'plx',l:'L+X /100',v:d=>sg(d.plx,1)},
+    {k:'pa',l:c.colP,v:d=>f(d.pa,S.view==='batters'?1:2)},
+    {k:'ua',l:c.colU,v:d=>f(d.ua,S.view==='batters'?1:2)},
+    {k:'pd',l:c.colX,v:d=>f(d.pd,S.view==='batters'?2:3)},
+    {k:'top10',l:'Top-10 %',v:d=>d.top10+'%'},
+    {k:'top5',l:'Top-5 %',v:d=>d.top5+'%'},
+    {k:'clutch',l:'Clutch score',v:d=>f(d.clutch,3)},
+    {k:'balls',l:'Pressure balls',v:d=>d.balls},
+    {k:'move',l:'vs prior rank',v:d=>{const m=d.old-d.rank;return m>0?`<span class="up">▲ ${m}</span>`:m<0?`<span class="dn">▼ ${-m}</span>`:'<span class="fl">–</span>'}}
+  ];
+}
+function renderTable(){
+  const cs=cols();
+  $('tbl').tHead.innerHTML='<tr>'+cs.map(c=>`<th scope="col" aria-sort="${S.sort===c.k?(S.dir>0?'ascending':'descending'):'none'}"><button type="button" class="th-btn" data-k="${c.k}">${c.l}${S.sort===c.k?(S.dir>0?' ↑':' ↓'):''}</button></th>`).join('')+'</tr>';
+  $('tbl').tHead.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;if(S.sort===k)S.dir*=-1;else{S.sort=k;S.dir=(k==='player'||k==='rank')?1:-1;}renderTable();});
+  const q=S.q.trim().toLowerCase();
+  let r=rows().filter(d=>!q||d.player.toLowerCase().includes(q));
+  const key=S.sort;
+  r=[...r].sort((a,b)=>{
+    const x=key==='move'?a.old-a.rank:a[key],y=key==='move'?b.old-b.rank:b[key];
+    return (typeof x==='string'?x.localeCompare(y):x-y)*S.dir;});
+  $('tbl').tBodies[0].innerHTML=r.map(d=>`<tr class="${d.rank<=10?'top':''}"${HL[d.player]?` data-pl="${esc(d.player)}"`:''}>`+cs.map(c=>`<td>${c.v(d)}</td>`).join('')+'</tr>').join('')
+    ||`<tr><td colspan="${cs.length}" style="text-align:center;color:var(--muted)">No player matches “${esc(S.q)}”.</td></tr>`;
+}
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>setView(t.dataset.view,true));
+$('q').addEventListener('input',e=>{S.q=e.target.value;renderTable();});
+window.addEventListener('hashchange',()=>{const v=hashView();if(v!==S.view)setView(v,false);});
+
+/* ===== v2: player images + 3D cards ===== */
+const slug=n=>n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const EXT=['png','webp','jpg'];
+const ini=n=>n.split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const pimg=n=>`<img src="players/${slug(n)}.png" data-n="${esc(n)}" data-e="0" alt="${esc(n)}" loading="lazy" decoding="async" onerror="imgFail(this)">`;
+const av=n=>`<span class="av">${pimg(n)}</span>`;
+window.imgFail=im=>{const e=+im.dataset.e+1,n=im.dataset.n;
+  if(e<EXT.length){im.dataset.e=e;im.src=`players/${slug(n)}.${EXT[e]}`;return;}
+  im.onerror=null;
+  im.outerHTML=`<span class="fb" role="img" aria-label="${esc(n)}"><svg viewBox="0 0 100 120" aria-hidden="true"><defs><linearGradient id="fbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8d9bea"/><stop offset="1" stop-color="#2d4fa8"/></linearGradient></defs><circle cx="50" cy="34" r="22" fill="url(#fbg)"/><path d="M6 120c0-34 20-52 44-52s44 18 44 52z" fill="url(#fbg)"/></svg><b>${ini(n)}</b></span>`;};
+const card=(d,i)=>{const c=CFG[S.view],m=c.metrics[0],x=c.metrics[1],bat=S.view==='batters';
+  return `<article class="tile${i%2?' flip':''}${d.rank===1?' t1':''}" style="--i:${i}" data-pl="${esc(d.player)}" tabindex="0" role="button" aria-label="${esc(d.player)}: show iconic ${bat?'knocks':'spells'}"><div class="c3"><div class="rkb">${d.rank}</div><div class="ph">${pimg(d.player)}</div>
+  <div class="inf"><div class="eb">${bat?'Batter':'Bowler'} · Rank ${d.rank}</div><div class="pn">${esc(d.player)}</div>
+  <div class="big"><b class="cu" data-v="${d.plx}">${sg(d.plx,1)}</b><span>runs ${bat?'added':'saved'} per 100 balls</span></div>
+  <div class="stats">
+    <div><span>${m.label}</span><b>${f(d[m.p],m.dec)}</b><em>vs ${f(d[m.u],m.dec)} usual</em></div>
+    <div><span>${x.label}</span><b>${f(d[x.p],x.dec)}</b><em>vs ${f(d[x.u],x.dec)} usual</em></div>
+    <div><span>Clutch score</span><b>${f(d.clutch,3)}</b><em>${d.balls} pressure balls</em></div></div>
+  <div class="meter" role="img" aria-label="${d.top10}% top-10 probability"><i data-w="${d.top10}"></i></div>
+  <div class="mlab"><span>Top 10 in ${d.top10}%</span><span>Top 5 in ${d.top5}%</span></div></div><span class="pk" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><div class="gl"></div></div></article>`};
+const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+let io=null;
+function reveal(t){t.classList.add('in');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const i=t.querySelector('.meter i');i.style.width=i.dataset.w+'%';}));
+  const el=t.querySelector('.cu');if(!el||RM)return;const v=+el.dataset.v,t0=performance.now();
+  const step=now=>{const k=Math.min(1,(now-t0)/1100);el.textContent=sg(v*(1-Math.pow(1-k,3)),1);if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step);}
+function enhance(){
+  if(io)io.disconnect();
+  const tiles=[...document.querySelectorAll('.tile')];
+  tiles.forEach(t=>{const c=t.querySelector('.c3');
+    if(!RM)t.addEventListener('pointermove',e=>{const r=t.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+      c.style.setProperty('--ry',((x-.5)*9)+'deg');c.style.setProperty('--rx',((.5-y)*9)+'deg');
+      c.style.setProperty('--mx',x*100+'%');c.style.setProperty('--my',y*100+'%');t.classList.add('hot');});
+    t.addEventListener('pointerleave',()=>{c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg');t.classList.remove('hot');});});
+  if(RM||!('IntersectionObserver' in window)){tiles.forEach(reveal);return;}
+  io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){reveal(e.target);io.unobserve(e.target);}}),{threshold:.25,rootMargin:'0px 0px -6% 0px'});
+  tiles.forEach(t=>io.observe(t));
+}
+let tick=false;
+addEventListener('scroll',()=>{if(tick||RM)return;tick=true;requestAnimationFrame(()=>{tick=false;const vh=innerHeight;
+  document.querySelectorAll('.tile.in .c3').forEach(c=>{const r=c.getBoundingClientRect();if(r.bottom<0||r.top>vh)return;
+    c.style.setProperty('--py',(((r.top+r.height/2)-vh/2)/vh*70).toFixed(1)+'px');});});},{passive:true});
+
+/* ===== v4: iconic knocks / spells panel ===== */
+const K=(t,b,opp,ev,tag,note)=>({t,b,opp,ev,tag,note});
+const HL={
+'Suryakumar Yadav':[
+ K('117','55 balls','vs England','Nottingham T20I · 2022','Century','First T20I hundred, in a lost chase. Showed he can take on a full-strength English attack.'),
+ K('111*','51 balls','vs New Zealand','Mount Maunganui T20I · 2022','Century','Seven fours and nine sixes on a slow-ish pitch; India won the series 1-0 off the back of it.'),
+ K('112*','51 balls','vs Sri Lanka','Rajkot T20I · 2023','Century','Third T20I hundred, a series decider. Eye-watering 360-degree hitting.'),
+ K('103*','49 balls','vs Gujarat Titans','IPL 2023 · Wankhede','IPL','Maiden IPL century against the eventual finalists, rescuing MI after an early wobble.')],
+'Tim David':[
+ K('102*','37 balls','vs West Indies','3rd T20I · St Kitts · 2025','Record','Fastest T20I hundred by an Australian. Walked in at the end of the Powerplay chasing 215 and won it.'),
+ K('50*','26 balls','vs Punjab Kings','IPL 2025 · Chinnaswamy','IPL','RCB were 63/9 in a rain-shortened game. David dragged them to a defendable total with a maiden IPL fifty.'),
+ K('45*','14 balls','vs Rajasthan Royals','IPL 2023 · Wankhede','IPL','17 needed off the last over of a 213 chase; three sixes and MI got there after Jaiswal\u2019s 124.')],
+'Abhishek Sharma':[
+ K('135','54 balls','vs England','5th T20I · Wankhede · 2025','Record','Highest T20I score by an Indian. 13 sixes, a 17-ball fifty turned into a 37-ball hundred.'),
+ K('141','55 balls','vs Punjab Kings','IPL 2025 · Hyderabad','IPL','Chased down 246 in a famous SRH win; the highest IPL score by an Indian at the time.'),
+ K('100','46 balls','vs Zimbabwe','2nd T20I · Harare · 2024','Century','Second-ever T20I, first hundred. Announced himself in just his second innings.'),
+ K('74','39 balls','vs Pakistan','Asia Cup Super 4 · 2025','Big match','Set the platform against Pakistan; Player of the Tournament run.')],
+'Heinrich Klaasen':[
+ K('104','51 balls','vs RCB','IPL 2023 · Hyderabad','IPL','First IPL hundred, a spin-hitting masterclass that SRH still lost to Kohli\u2019s hundred.'),
+ K('105*','39 balls','vs KKR','IPL 2025 · Delhi','IPL','SRH posted 278/3 with Klaasen cutting loose in the death overs.'),
+ K('52','27 balls','vs India','T20 World Cup final · 2024','Final','Dragged South Africa from 30/3 to within touching distance of the trophy.')],
+'Nicholas Pooran':[
+ K('62','19 balls','vs RCB','IPL 2023 · Chinnaswamy','IPL','19-ball fifty in a high-scoring thriller that LSG won off the last ball.'),
+ K('98','53 balls','vs Afghanistan','T20 World Cup · Providence · 2024','World Cup','Carried West Indies with a captain\u2019s knock on a tricky surface.'),
+ K('70','26 balls','vs SRH','IPL 2025 · Hyderabad','IPL','Early-season blitz in the match that set up his 40-six season.')],
+'Virat Kohli':[
+ K('82*','53 balls','vs Pakistan','T20 World Cup · MCG · 2022','World Cup','28 needed off 8, two sixes off Rauf, India won off the last ball. Often called the greatest T20I innings.'),
+ K('973','16 innings','2016 IPL season','Royal Challengers Bangalore','Season','Four centuries and a record-setting run tally. The greatest single IPL season by a batter.'),
+ K('55*','37 balls','vs Pakistan','T20 World Cup · Eden Gardens · 2016','World Cup','Rescued India from 23/3 in the first match of that campaign.'),
+ K('76','59 balls','vs South Africa','T20 World Cup final · 2024','Final','Anchored India\u2019s total on a day the top order fell early.')],
+'Jos Buttler':[
+ K('863','17 innings','2022 IPL season','Rajasthan Royals','Season','Orange Cap and four hundreds as RR reached the final.'),
+ K('80*','49 balls','vs India','T20 World Cup semi-final · 2022','Knockout','Chased 169 with Hales without losing a wicket.'),
+ K('107*','60 balls','vs KKR','IPL 2024 · Eden Gardens','IPL','Won RR a 224 chase off the last ball.')],
+'Shubman Gill':[
+ K('129','60 balls','vs Mumbai Indians','IPL 2023 Qualifier 2','Playoff','Ahmedabad crowd on its feet; GT posted 233 and went on to the final.'),
+ K('890','17 innings','2023 IPL season','Gujarat Titans','Season','Orange Cap winner, three hundreds in a season.'),
+ K('126*','63 balls','vs New Zealand','3rd T20I · Ahmedabad · 2023','Century','Highest T20I score by an Indian at that time.'),
+ K('104*','52 balls','vs RCB','IPL 2023 · Bengaluru','IPL','Answered Kohli\u2019s hundred with one of his own and knocked RCB out of the playoff race.')],
+'Rajat Patidar':[
+ K('112*','54 balls','vs LSG','IPL 2022 Eliminator · Eden Gardens','Playoff','First uncapped player to hit an IPL playoff century. Carried RCB into Qualifier 2.'),
+ K('64','32 balls','vs Mumbai Indians','IPL 2025 · Wankhede','IPL','Captain\u2019s knock to set up a win at Mumbai\u2019s home ground.'),
+ K('Title','as captain','IPL 2025','Royal Challengers Bengaluru','Season','Led RCB to their first IPL trophy in his first season as captain.')],
+'Tilak Varma':[
+ K('69*','53 balls','vs Pakistan','Asia Cup Final · Dubai · 2025','Final','India were 20/3 chasing 147. Tilak stayed unbeaten and won the trophy.'),
+ K('107*','56 balls','vs South Africa','3rd T20I · Centurion · 2024','Century','First T20I hundred, in a series India won 3-1.'),
+ K('120*','47 balls','vs South Africa','4th T20I · Johannesburg · 2024','Century','Back-to-back hundreds in consecutive innings.')],
+'Jasprit Bumrah':[
+ K('3/14','4 overs','vs Pakistan','T20 World Cup · New York · 2024','World Cup','India defended 119 on a nervy pitch; the match-winning spell.'),
+ K('2/18','4 overs','vs South Africa','T20 World Cup final · 2024','Final','Squeezed the death overs when it looked gone, tournament-turning.'),
+ K('5/21','4 overs','vs RCB','IPL 2024 · Wankhede','IPL','Best IPL figures; MI bundled RCB out in the Powerplay.')],
+'Sunil Narine':[
+ K('109','56 balls','vs RR','IPL 2024 · Eden Gardens','Batting','First IPL hundred, then lost to Buttler\u2019s last-ball win. A bowler\u2019s season, bat in hand.'),
+ K('488 + 17','2024 season','IPL 2024','Kolkata Knight Riders','Season','Player of the Tournament, KKR champions.'),
+ K('24 wkts','2012 season','IPL 2012','Kolkata Knight Riders','Season','Mystery-spin debut campaign, MVP and champions.')],
+'Josh Hazlewood':[
+ K('3/16','4 overs','vs New Zealand','T20 World Cup final · Dubai · 2021','Final','Early wickets in the final as Australia won their first T20 World Cup.'),
+ K('3/21','4 overs','vs Punjab Kings','IPL 2025 Qualifier 1','Playoff','PBKS were skittled for 101 as RCB reached the final.')],
+'Kuldeep Yadav':[
+ K('4/30','4 overs','vs Pakistan','Asia Cup Final · Dubai · 2025','Final','Pakistan collapsed to 146 all out; Kuldeep was the architect.'),
+ K('3/19','4 overs','vs England','T20 World Cup semi-final · Guyana · 2024','Knockout','Middle-overs wickets that helped India beat England and reach the final.'),
+ K('3/18','4 overs','vs Pakistan','Asia Cup · Dubai · 2025','Big match','Gave India control in the group-stage clash.')],
+'Varun Chakravarthy':[
+ K('5/42','10 overs','vs New Zealand','Champions Trophy · Dubai · 2025','ICC','Five-for in the last group game that helped India finish top of the group.'),
+ K('5/24','4 overs','vs England','3rd T20I · Rajkot · 2025','Five-for','First T20I five-for, England never recovered.')],
+'Rashid Khan':[
+ K('Hat-trick','3 wickets','vs KKR','IPL 2023 · Eden Gardens','IPL','A hat-trick at Eden Gardens during a season where he finished among the top wicket-takers.'),
+ K('79*','32 balls','vs Mumbai Indians','IPL 2023 Qualifier 2','Batting','Ten sixes from number eight, almost pulling off an impossible chase.'),
+ K('27 wkts','2023 season','IPL 2023','Gujarat Titans','Season','GT reached the final, Rashid was second in the wickets table.')],
+'Wanindu Hasaranga':[
+ K('26 wkts','2022 season','IPL 2022','Royal Challengers Bangalore','Season','Second-highest wicket-taker of the season, a leg-spin constant for RCB.'),
+ K('Asia Cup','2022 champions','Asia Cup 2022','Sri Lanka','Title','Key middle-overs bowler in Sri Lanka\u2019s unexpected T20 title run.')],
+'Matheesha Pathirana':[
+ K('4/28','4 overs','vs Mumbai Indians','IPL 2024 · Wankhede','IPL','Slingy yorkers sealed a CSK win after Dhoni\u2019s late cameo.'),
+ K('19 wkts','12 matches','IPL 2023','Chennai Super Kings','Season','Death-overs specialist in CSK\u2019s title-winning 2023 season.')],
+'Nathan Ellis':[
+ K('Hat-trick','T20I debut','vs Bangladesh','Mirpur T20I · 2021','Record','First bowler ever to take a hat-trick on T20I debut. Australia still lost the series.'),
+ K('4/12','T20I best','Australia T20Is','Career-best T20I figures','Career','The death-over specialist at his sharpest, slower balls and yorkers in the closing overs.'),
+ K('4/30','IPL best','IPL career','Best IPL figures','IPL','His best IPL haul, from limited appearances, enough to earn a CSK contract.'),
+ K('Title','as captain','BBL 2024-25','Hobart Hurricanes','Season','Captained Hobart Hurricanes to the Big Bash title.')],
+'Noor Ahmad':[
+ K('4/18','4 overs','vs Mumbai Indians','IPL 2025 · Chepauk','IPL','Wrist-spin domination on his first CSK appearance of the season.'),
+ K('24 wkts','2025 season','IPL 2025','Chennai Super Kings','Season','Second-highest wicket-taker of the season for a struggling side.')]
+};
+const modal=document.createElement('div');modal.id='hlm';modal.className='hlm';modal.hidden=true;
+modal.innerHTML='<div class="hl-bd" data-x></div><div class="hl-pn" role="dialog" aria-modal="true" aria-labelledby="hl-t"><div class="hl-grab" aria-hidden="true"></div><button type="button" class="hl-x" data-x aria-label="Close">×</button><div class="hl-hd"></div><div class="hl-ls"></div><div class="hl-nx"><button type="button" data-nav="-1">‹ Previous</button><button type="button" data-nav="1">Next ›</button></div><p class="hl-fn">Highlights curated by hand from memorable matches, so double-check the figures before publishing.</p></div>';
+document.body.appendChild(modal);
+let hlOpener=null,curHL=null;
+function openHL(name,opener){
+  const r=rows().find(x=>x.player===name);if(!r)return;
+  const bat=S.view==='batters',list=HL[name]||[];hlOpener=opener||null;curHL=name;
+  modal.querySelector('.hl-hd').innerHTML=`<span class="hl-ph">${pimg(name)}</span><div><div class="eb">${bat?'Batter':'Bowler'} · Rank ${r.rank}</div><h3 id="hl-t">${esc(name)}</h3><div class="hl-sb">Iconic ${bat?'knocks':'spells'} and seasons</div></div>`;
+  modal.querySelector('.hl-ls').innerHTML=list.length?list.map((k,i)=>`<article class="hl-it" style="--k:${i}"><div class="hl-n"><b>${esc(k.t)}</b><span>${esc(k.b)}</span></div><div class="hl-b"><div class="hl-tg"><i>${esc(k.tag)}</i>${esc(k.opp)}</div><div class="hl-ev">${esc(k.ev)}</div><p>${esc(k.note)}</p></div></article>`).join(''):'<p class="hl-em">Highlights for this player have not been added yet.</p>';
+  $('hint').classList.add('gone');modal.hidden=false;navState();document.documentElement.style.overflow='hidden';
+  requestAnimationFrame(()=>{modal.classList.add('on');modal.querySelector('.hl-x').focus();});
+}
+function closeHL(){modal.classList.remove('on');document.documentElement.style.overflow='';
+  setTimeout(()=>{modal.hidden=true;},200);if(hlOpener&&hlOpener.focus)hlOpener.focus();}
+modal.addEventListener('click',e=>{if(e.target.closest('[data-x]'))closeHL();});
+addEventListener('keydown',e=>{if(!modal.hidden&&e.key==='Escape')closeHL();});
+$('tiles').addEventListener('click',e=>{const t=e.target.closest('.tile[data-pl]');if(t)openHL(t.dataset.pl,t);});
+$('tiles').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest('.tile[data-pl]');if(t){e.preventDefault();openHL(t.dataset.pl,t);}});
+$('tbl').addEventListener('click',e=>{const tr=e.target.closest('tr[data-pl]');if(tr)openHL(tr.dataset.pl,tr);});
+
+/* v5 behaviours */
+function navHL(dir){const r=rows().slice(0,10),i=r.findIndex(x=>x.player===curHL);if(i<0)return;const n=r[i+dir];if(n){openHL(n.player,hlOpener);modal.querySelector('.hl-pn').scrollTop=0;}}
+function navState(){const r=rows().slice(0,10),i=r.findIndex(x=>x.player===curHL);const b=modal.querySelectorAll('[data-nav]');b[0].disabled=i<=0;b[1].disabled=i<0||i>=r.length-1;}
+modal.addEventListener('click',e=>{const b=e.target.closest('[data-nav]');if(b)navHL(+b.dataset.nav);});
+addEventListener('keydown',e=>{if(modal.hidden)return;if(e.key==='ArrowRight')navHL(1);if(e.key==='ArrowLeft')navHL(-1);});
+(function(){const pn=modal.querySelector('.hl-pn');let y0=null,dy=0;
+  pn.addEventListener('touchstart',e=>{if(pn.scrollTop<=0&&innerWidth<=560){y0=e.touches[0].clientY;dy=0;}},{passive:true});
+  pn.addEventListener('touchmove',e=>{if(y0===null)return;dy=e.touches[0].clientY-y0;if(dy>0){pn.classList.add('drag');pn.style.transform='translateY('+dy+'px)';}else{pn.style.transform='';}},{passive:true});
+  pn.addEventListener('touchend',()=>{if(y0===null)return;pn.classList.remove('drag');if(dy>110)closeHL();pn.style.transform='';y0=null;dy=0;});})();
+const cue=$('cue');
+cue.onclick=()=>$('h-top').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'});
+addEventListener('scroll',()=>cue.classList.toggle('gone',scrollY>80),{passive:true});
+
+S.view=hashView();render();
+</script>
+
+</body></html>
